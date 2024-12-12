@@ -7,6 +7,7 @@
 This repository contains all the files related to the diabetes project.
 - diabetes_data.csv: The dataset used for analysis.
 - Final.Rmd: RMarkdown file that performs data cleaning, model building, and evaluation.
+- combined_insights_plot.png: Dashbaord for part 3.
 - README.md: This file.
 
 ## Key Findings
