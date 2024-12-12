@@ -1,0 +1,113 @@
+---
+title: "Untitled"
+author: "Erik Galauner"
+date: "2024-12-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(caret)
+library(randomForest)
+library(rpart)
+library(gridExtra)
+
+data <- read.csv("diabetes_data.csv")
+
+data$gender <- as.factor(data$gender)
+data$hypertension <- as.factor(data$hypertension)
+data$heart_disease <- as.factor(data$heart_disease)
+data$smoking_history <- as.factor(data$smoking_history)
+data$diabetes <- as.factor(data$diabetes)
+
+set.seed(42)
+train_index <- createDataPartition(data$diabetes, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+control <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+
+logistic_model <- train(diabetes ~ ., data = train_data, method = "glm", family = "binomial", trControl = control)
+
+rf_model <- train(diabetes ~ ., data = train_data, method = "rf", trControl = control)
+
+subset_formula <- diabetes ~ age + bmi + HbA1c_level
+tree_model <- train(subset_formula, data = train_data, method = "rpart", trControl = control)
+
+logistic_cm <- confusionMatrix(predict(logistic_model, test_data), test_data$diabetes)
+rf_cm <- confusionMatrix(predict(rf_model, test_data), test_data$diabetes)
+tree_cm <- confusionMatrix(predict(tree_model, test_data), test_data$diabetes)
+
+results <- data.frame(
+  Model = c("Logistic Regression", "Random Forest", "Classification Tree"),
+  Accuracy = c(logistic_cm$overall["Accuracy"], rf_cm$overall["Accuracy"], tree_cm$overall["Accuracy"])
+)
+results
+```
+
+```{r}
+logistic_preds <- predict(logistic_model, newdata = test_data)
+rf_preds <- predict(rf_model, newdata = test_data)
+tree_preds <- predict(tree_model, newdata = test_data)
+
+logistic_cm <- confusionMatrix(logistic_preds, test_data$diabetes)
+rf_cm <- confusionMatrix(rf_preds, test_data$diabetes)
+tree_cm <- confusionMatrix(tree_preds, test_data$diabetes)
+
+results <- data.frame(
+  Model = c("Logistic Regression", "Random Forest", "Classification Tree"),
+  Accuracy = c(logistic_cm$overall["Accuracy"], rf_cm$overall["Accuracy"], tree_cm$overall["Accuracy"])
+)
+
+library(ggplot2)
+comparison_plot <- ggplot(results, aes(x = Model, y = Accuracy)) +
+  geom_col() +
+  labs(title = "Model Accuracy Comparison", y = "Accuracy", x = "Model") +
+  theme_minimal()
+comparison_plot
+
+```
+
+```{r}
+importance <- varImp(rf_model)
+importance_df <- as.data.frame(importance$importance)
+importance_df <- rownames_to_column(importance_df, "Feature")
+importance_df <- arrange(importance_df, desc(Overall))
+
+importance_plot <- ggplot(importance_df, aes(x = reorder(Feature, Overall), y = Overall)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Feature Importance from Random Forest", y = "Importance", x = "Feature") +
+  theme_minimal()
+
+bmi_plot <- ggplot(train_data, aes(x = bmi, fill = diabetes)) +
+  geom_density(alpha = 0.6) +
+  labs(title = "BMI Distribution by Diabetes Status", x = "BMI", y = "Density") +
+  theme_minimal()
+
+library(gridExtra)
+grid.arrange(importance_plot, bmi_plot, ncol = 1, top = "Insights: Feature Importance and BMI Distribution")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
